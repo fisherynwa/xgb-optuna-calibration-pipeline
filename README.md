@@ -1,4 +1,4 @@
-# # xgb-optuna-calibration-pipeline
+# xgb-optuna-calibration-pipeline
 ![Tests](https://github.com/fisherynwa/xgb-optuna-calibration-pipeline/actions/workflows/tests.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
