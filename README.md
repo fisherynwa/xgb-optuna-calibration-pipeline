@@ -3,7 +3,7 @@
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 A Python package providing an XGBoost classifier with built-in Optuna hyperparameter optimization,
-wrapped in a scikit-learn compatible interface. Experiment tracking is integrated via MLflow.
+wrapped in a scikit-learn-like interface. Experiment tracking is integrated via MLflow.
 Detailed pipeline clarifications can be found in 
 `notebooks/ xgb_optuna_synthetic_data.ipynb'.
 
@@ -98,7 +98,7 @@ uv run pytest tests/ -v
 xgb-optuna/
 ├── .github/
 │   └── workflows/
-│       └── tests.yml         # GitHub Actions CI
+│       └── tests.yml        
 ├── src/
 │   ├── xgb_opt_clf.py        # XGBoost + Optuna classifier
 │   └── helper_functions.py   # nested_cv_score and shared utilities
