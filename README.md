@@ -94,8 +94,11 @@ uv run pytest tests/ -v
 ```
 
 ## Project Structure
-
+```
 xgb-optuna/
+├── .github/
+│   └── workflows/
+│       └── tests.yml         # GitHub Actions CI
 ├── src/
 │   ├── xgb_opt_clf.py        # XGBoost + Optuna classifier
 │   └── helper_functions.py   # nested_cv_score and shared utilities
@@ -104,9 +107,12 @@ xgb-optuna/
 │   └── xgb_optuna_pima_diabetes.ipynb
 ├── tests/
 │   └── test_xgb_opt_clf.py   # 28 unit tests
+├── conftest.py
 ├── Dockerfile
 ├── pyproject.toml
-└── main.py
+├── main.py
+└── README.md
+```
 
 # Notebooks
 | Notebook | Description |
