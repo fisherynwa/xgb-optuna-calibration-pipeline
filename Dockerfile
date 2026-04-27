@@ -2,7 +2,7 @@
 FROM python:3.12-slim
 
 # ─── Install uv ───────────────────────────────────────────────────────────────
-COPY --from=ghcr.io/astral-sh/uv:0.6.0 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.7.0 /uv /usr/local/bin/uv
 
 # ─── Working directory ────────────────────────────────────────────────────────
 WORKDIR /app
@@ -35,7 +35,7 @@ ENV PYTHONPATH=/app
 
 # ─── Expose Jupyter port ──────────────────────────────────────────────────────
 EXPOSE 8888
-
+EXPOSE 5002
 # ─── Launch Jupyter Lab ───────────────────────────────────────────────────────
 CMD ["uv", "run", "jupyter", "lab", \
      "--ip=0.0.0.0", \
