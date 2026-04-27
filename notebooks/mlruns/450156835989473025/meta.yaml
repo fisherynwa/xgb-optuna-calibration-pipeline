@@ -1,8 +1,0 @@
-artifact_location: file:///Users/vkvutov/Documents/my_codes/xgb-cat-optuna/xgb-optuna/notebooks/mlruns/450156835989473025
-creation_time: 1775750833876
-experiment_id: '450156835989473025'
-last_update_time: 1775750833876
-lifecycle_stage: active
-name: xgb_opt_clf_pima
-trace_location: null
-workspace: default
