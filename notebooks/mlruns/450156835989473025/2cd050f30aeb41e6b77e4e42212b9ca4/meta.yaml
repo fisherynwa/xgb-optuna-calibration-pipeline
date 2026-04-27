@@ -1,0 +1,16 @@
+artifact_uri: file:///Users/vkvutov/Documents/my_codes/xgb-cat-optuna/xgb-optuna/notebooks/mlruns/450156835989473025/2cd050f30aeb41e6b77e4e42212b9ca4/artifacts
+deleted_time: 1777288456580
+end_time: 1777047708684
+entry_point_name: ''
+experiment_id: '450156835989473025'
+lifecycle_stage: deleted
+run_id: 2cd050f30aeb41e6b77e4e42212b9ca4
+run_name: pima_diabetes
+run_uuid: 2cd050f30aeb41e6b77e4e42212b9ca4
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777047572837
+status: 4
+tags: []
+user_id: vkvutov

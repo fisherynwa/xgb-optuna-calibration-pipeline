@@ -1,0 +1,24 @@
+# virtual environment
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# MLflow
+mlruns/
+mlflow.db
+
+# Docker
+.dockerignore
+
+# macOS
+.DS_Store
+
+# xgb_optuna.egg
+*.egg-info/

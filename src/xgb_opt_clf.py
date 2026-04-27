@@ -11,6 +11,7 @@ from sklearn.calibration import calibration_curve
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
+from sklearn.metrics import brier_score_loss
 
 logger = logging.getLogger(__name__)
  
@@ -80,7 +81,7 @@ class XGBOptClf(BaseEstimator, ClassifierMixin):
         eval_metric="auc",
         use_multivariate=False,
         is_stratified=True,
-        scale_pos_weight=None
+        scale_pos_weight=None,
     ):
         self.n_trials = n_trials
         self.nfold = nfold
@@ -90,8 +91,7 @@ class XGBOptClf(BaseEstimator, ClassifierMixin):
         self.eval_metric = eval_metric
         self.use_multivariate = use_multivariate
         self.is_stratified = is_stratified
-        self.scale_pos_weight = scale_pos_weight
- 
+        self.scale_pos_weight = scale_pos_weight 
     # ------------------------
     # Internal helpers
     # ------------------------
@@ -109,10 +109,10 @@ class XGBOptClf(BaseEstimator, ClassifierMixin):
         """Return fixed params shared by CV and final training."""
         params = {         
             "verbosity": 0,
-            "objective": "binary:logistic",
+            "objective": "binary:logistic", # this is the default: https://xgboost.readthedocs.io/en/stable/parameter.html#general-parameters;
             "eval_metric": self.eval_metric,
-            "booster": "gbtree",
-            "tree_method": "hist",
+            "booster": "gbtree", # this is the default: https://xgboost.readthedocs.io/en/stable/parameter.html#general-parameters;
+            # gblinear uses linear functions; it will be deprecated in future versions, so I set it explicitly to gbtree
             "n_jobs": self._resolve_n_jobs(),
             "seed": self.random_state,
         }
@@ -142,16 +142,19 @@ class XGBOptClf(BaseEstimator, ClassifierMixin):
         https://github.com/optuna/optuna-examples/blob/main/xgboost/xgboost_cv_integration.py
         
         """
+        n_train = dtrain.num_row()
+        mcw_upper = max(30, n_train // 20)
+        max_depth_upper = 6 if n_train < 5000 else 8
+        
         params = {
             **self._base_params(),
-            # Hyperparameter search space
-            "lambda": trial.suggest_float("lambda", 1e-2, 12.0, log=True),
-            "alpha": trial.suggest_float("alpha", 1e-3, 15.0, log=True),
-            "learning_rate": trial.suggest_float("learning_rate", 1e-3, 0.3, log=True),
-            "max_depth": trial.suggest_int("max_depth", 2, 8),
-            "min_child_weight": trial.suggest_int("min_child_weight", 2, 12),
-            "gamma": trial.suggest_float("gamma", 1e-3, 1.0, log=True),
-            "subsample": trial.suggest_float("subsample", 0.5, 0.9),
+            "lambda":           trial.suggest_float("lambda", 1e-2, 5.0, log=True),
+            "alpha":            trial.suggest_float("alpha", 1e-3, 5.0, log=True),
+            "learning_rate":    trial.suggest_float("learning_rate", 1e-3, 0.3, log=True),
+            "max_depth":        trial.suggest_int("max_depth", 2, max_depth_upper),
+            "min_child_weight": trial.suggest_int("min_child_weight", 2, mcw_upper),
+            "gamma":            trial.suggest_float("gamma", 1e-3, 1.0, log=True),
+            "subsample":        trial.suggest_float("subsample", 0.5, 0.9),
             "colsample_bytree": trial.suggest_float("colsample_bytree", 0.5, 0.9),
         }
 
@@ -162,7 +165,7 @@ class XGBOptClf(BaseEstimator, ClassifierMixin):
             params,
             dtrain,
             num_boost_round=1000,
-            early_stopping_rounds=50,
+            early_stopping_rounds=100,
             nfold=self.nfold,
             seed=self.random_state,
             callbacks=[pruning_callback],
@@ -207,8 +210,8 @@ class XGBOptClf(BaseEstimator, ClassifierMixin):
         sampler = optuna.samplers.TPESampler(multivariate=self.use_multivariate,
                                              n_startup_trials=n_startup_trials, # 10 is the default value, but I set it adaptively based on n_trials
                                              seed=self.random_state)
-        # Stop trials performing worse than the median after 5 boosting rounds
-        pruner = optuna.pruners.MedianPruner(n_warmup_steps=5) 
+        # Stop trials performing worse than the median after 10 boosting rounds
+        pruner = optuna.pruners.MedianPruner(n_warmup_steps=10) 
 
         self.study_ = optuna.create_study(direction="maximize",
                                           sampler=sampler,
@@ -306,7 +309,7 @@ class XGBOptClf(BaseEstimator, ClassifierMixin):
         """
         self._check_is_fitted()
 
-        # Get raw probabilities
+        # Get raw probabilities for the positive class (Y=1)
         dev_probs  = self.predict_proba(X_dev)[:, 1]
         test_probs = self.predict_proba(X_test)[:, 1]
 
@@ -333,6 +336,8 @@ class XGBOptClf(BaseEstimator, ClassifierMixin):
             "test_auc":          roc_auc_score(y_test, test_probs),
             "dev_mcc":           matthews_corrcoef(y_dev,  dev_preds),
             "test_mcc":          matthews_corrcoef(y_test, test_preds),
+            "dev_brier":        brier_score_loss(y_dev,  dev_probs),
+            "test_brier":       brier_score_loss(y_test, test_probs),
             "applied_threshold": final_threshold,
             "dev_report":        classification_report(y_dev,  dev_preds, output_dict=True),
             "test_report":       classification_report(y_test, test_preds, output_dict=True),

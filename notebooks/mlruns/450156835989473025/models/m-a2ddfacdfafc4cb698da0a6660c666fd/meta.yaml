@@ -1,0 +1,10 @@
+artifact_location: file:///Users/vkvutov/Documents/my_codes/xgb-cat-optuna/xgb-optuna/notebooks/mlruns/450156835989473025/models/m-a2ddfacdfafc4cb698da0a6660c666fd/artifacts
+creation_timestamp: 1775829167441
+experiment_id: '450156835989473025'
+last_updated_timestamp: 1775829170610
+model_id: m-a2ddfacdfafc4cb698da0a6660c666fd
+model_type: null
+name: model
+source_run_id: c79c5b8223d44e19a0d7d4163db591d9
+status: 2
+status_message: null

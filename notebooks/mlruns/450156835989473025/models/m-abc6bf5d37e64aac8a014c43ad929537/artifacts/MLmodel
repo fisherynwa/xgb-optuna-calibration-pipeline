@@ -1,0 +1,22 @@
+artifact_path: file:///Users/vkvutov/Documents/my_codes/xgb-cat-optuna/xgb-optuna/notebooks/mlruns/450156835989473025/models/m-abc6bf5d37e64aac8a014c43ad929537/artifacts
+flavors:
+  python_function:
+    data: model.ubj
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.xgboost
+    python_version: 3.12.7
+  xgboost:
+    code: null
+    data: model.ubj
+    model_class: xgboost.core.Booster
+    model_format: ubj
+    xgb_version: 3.2.0
+mlflow_version: 3.11.1
+model_id: m-abc6bf5d37e64aac8a014c43ad929537
+model_size_bytes: 8497
+model_uuid: m-abc6bf5d37e64aac8a014c43ad929537
+prompts: null
+run_id: 453cbffda5cb413c8795885c4b3cea24
+utc_time_created: '2026-04-09 16:29:46.854870'
