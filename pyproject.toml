@@ -1,7 +1,7 @@
 [project]
 name = "xgb-optuna"
 version = "0.7.5"
-description = "XGBoost calibrated adjusted classification pipeline"
+description = "XGBoost + Optuna pipeline with threshold optimization and MLflow tracking"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
