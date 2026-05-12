@@ -214,7 +214,7 @@ class TestXGBOptClf(unittest.TestCase):
         self.assertEqual(clf.scale_pos_weight_, 5.0)
 
     def test_scale_pos_weight_none(self):
-        """scale_pos_weight=None does not inject scale_pos_weight into params."""
+        """scale_pos_weight=None does not change scale_pos_weight into params."""
         clf = XGBOptClf(n_trials=5, random_state=42, scale_pos_weight=None)
         clf.fit(self.X_dev, self.y_dev)
         self.assertNotIn("scale_pos_weight", clf.final_params_)   
@@ -263,7 +263,51 @@ class TestXGBOptClf(unittest.TestCase):
 
         # learning rate is not degenerate
         self.assertGreater(p["learning_rate"], 0)
-            
+     
+    #######################################
+    ## TESTS: frozen_params
+    #######################################        
+    def test_frozen_params_respected(self):
+        """Frozen parameters are not changed by Optuna and appear in final_params_."""
+        frozen = {"learning_rate": 0.01, "max_depth": 4}
+        clf = XGBOptClf(n_trials=5, random_state=42, frozen_params=frozen)
+        clf.fit(self.X_dev, self.y_dev)
+
+        # Check that frozen params are in final_params_ with correct values
+        for key, value in frozen.items():
+            self.assertIn(key, clf.final_params_)
+            self.assertEqual(clf.final_params_[key], value)
+
+        # Check that frozen params are not in best_params_ (since they were not optimized)
+        for key in frozen.keys():
+            self.assertNotIn(key, clf.best_params_)
+    def test_frozen_params_not_suggested(self):
+        """Frozen parameters are not suggested by Optuna during optimization."""
+        frozen = {"learning_rate": 0.01, "max_depth": 4}
+        clf = XGBOptClf(n_trials=5, random_state=42, frozen_params=frozen)
+        clf.fit(self.X_dev, self.y_dev)
+
+        # Check that frozen params are not in best_params_ (since they were not optimized)
+        for key in frozen.keys():
+            self.assertNotIn(key, clf.best_params_)
+    
+    def test_non_frozen_params_are_tuned(self):
+        """Non-frozen parameters are tuned by Optuna and appear in best_params_."""
+        frozen = {"learning_rate": 0.01, "max_depth": 4}
+        clf = XGBOptClf(n_trials=5, random_state=42, frozen_params=frozen)
+        clf.fit(self.X_dev, self.y_dev)
+
+        expected_tuned = {"lambda", "alpha", "gamma", "subsample", "colsample_bytree", "min_child_weight"}
+        for key in expected_tuned:
+            self.assertIn(key, clf.best_params_, msg=f"{key} should be tuned but is missing from best_params_")
+
+    def test_frozen_params_values_correct(self):
+        """Frozen parameter values in final_params_ match exactly what was passed in."""
+        frozen = {"learning_rate": 0.01, "max_depth": 4}
+        clf = XGBOptClf(n_trials=5, random_state=42, frozen_params=frozen)
+        clf.fit(self.X_dev, self.y_dev)
+        self.assertEqual(clf.final_params_["learning_rate"], 0.01)
+        self.assertEqual(clf.final_params_["max_depth"], 4)
         
     #######################################
     ## TESTS: reproducibility

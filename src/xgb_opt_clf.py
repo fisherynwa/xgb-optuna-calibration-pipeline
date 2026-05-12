@@ -12,6 +12,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 from sklearn.metrics import brier_score_loss
+from optuna.importance import get_param_importances
+from optuna.importance import FanovaImportanceEvaluator
 
 logger = logging.getLogger(__name__)
  
@@ -68,8 +70,14 @@ class XGBOptClf(BaseEstimator, ClassifierMixin):
         For outer CV stratification, see the `stratified` parameter of
         nested_cv_score(). Default True.
     scale_pos_weight : float, "auto", or None
-        Weight for positive class. "auto" computes neg/pos ratio from
+        Weight for positive class. "auto" computes the neg/pos ratio from
         training data. Default None.
+    frozen_params : dict or None
+        Hyperparameters to fix at specified values, removing them from the
+        Optuna search space. Useful when parameter importance analysis
+        identifies low-impact hyperparameters that do not need tuning.
+        Users can optimize on a reduced set of hyperparameters while keeping others fixed; useful for small datasets or when computational resources are limited.
+        Default None.
     """
     def __init__(
         self,
@@ -82,6 +90,7 @@ class XGBOptClf(BaseEstimator, ClassifierMixin):
         use_multivariate=False,
         is_stratified=True,
         scale_pos_weight=None,
+        frozen_params=None
     ):
         self.n_trials = n_trials
         self.nfold = nfold
@@ -91,7 +100,8 @@ class XGBOptClf(BaseEstimator, ClassifierMixin):
         self.eval_metric = eval_metric
         self.use_multivariate = use_multivariate
         self.is_stratified = is_stratified
-        self.scale_pos_weight = scale_pos_weight 
+        self.scale_pos_weight = scale_pos_weight
+        self.frozen_params = frozen_params or {}
     # ------------------------
     # Internal helpers
     # ------------------------
@@ -104,7 +114,9 @@ class XGBOptClf(BaseEstimator, ClassifierMixin):
         if self.n_jobs is None:
             return 1 if os.path.exists("/.dockerenv") else -1
         return self.n_jobs
-
+    #------------------------
+    # Base Parameters
+    #------------------------
     def _base_params(self):
         """Return fixed params shared by CV and final training."""
         params = {         
@@ -117,13 +129,16 @@ class XGBOptClf(BaseEstimator, ClassifierMixin):
             "seed": self.random_state,
         }
         if hasattr(self, "scale_pos_weight_"):
+            # (with underscore) is set by fit(); this is from scikit-learn
             spw = self.scale_pos_weight_
         else:
             spw = self.scale_pos_weight
         if spw is not None:
             params["scale_pos_weight"] = spw
         return params
-    
+    #------------------------
+    # Auto scale_pos_weight
+    #------------------------
     def _compute_scale_pos_weight(self, y):
         """Compute scale_pos_weight as ratio of negatives to positives."""
         n_neg = np.sum(y == 0)
@@ -131,6 +146,34 @@ class XGBOptClf(BaseEstimator, ClassifierMixin):
         if n_pos == 0:
             raise ValueError("No positive samples found in y.")
         return n_neg / n_pos
+
+    #------------------------
+    # Frozen Parameters
+    #------------------------
+    def _suggest(self, trial, method, name, *args, **kwargs):
+        """
+        Suggest a hyperparameter value via Optuna, or return a fixed value
+        if the parameter is listed in frozen_params.
+ 
+        Parameters
+        ----------
+        trial : optuna.Trial
+        method : str
+            Optuna suggest method name, e.g. "suggest_float" or "suggest_int".
+        name : str
+            Hyperparameter name.
+        *args, **kwargs
+            Passed through to the Optuna suggest method when not some parameters are meant to be frozen.
+ 
+        Returns
+        -------
+        float or int
+            Either the frozen value or the Optuna-suggested value.
+        """
+        if name in self.frozen_params:  # no None check needed
+            return self.frozen_params[name]
+        return getattr(trial, method)(name, *args, **kwargs)
+    
     # ------------------------
     # Optuna Objective
     # ------------------------
@@ -145,17 +188,18 @@ class XGBOptClf(BaseEstimator, ClassifierMixin):
         n_train = dtrain.num_row()
         mcw_upper = max(30, n_train // 20)
         max_depth_upper = 6 if n_train < 5000 else 8
+        early_stopping_rounds = 40 if n_train < 1000 else 80 if n_train < 10000 else 100
         
         params = {
             **self._base_params(),
-            "lambda":           trial.suggest_float("lambda", 1e-2, 5.0, log=True),
-            "alpha":            trial.suggest_float("alpha", 1e-3, 5.0, log=True),
-            "learning_rate":    trial.suggest_float("learning_rate", 1e-3, 0.3, log=True),
-            "max_depth":        trial.suggest_int("max_depth", 2, max_depth_upper),
-            "min_child_weight": trial.suggest_int("min_child_weight", 2, mcw_upper),
-            "gamma":            trial.suggest_float("gamma", 1e-3, 1.0, log=True),
-            "subsample":        trial.suggest_float("subsample", 0.5, 0.9),
-            "colsample_bytree": trial.suggest_float("colsample_bytree", 0.5, 0.9),
+            "lambda":           self._suggest(trial, "suggest_float", "lambda", 1e-2, 5.0, log=True),
+            "alpha":            self._suggest(trial, "suggest_float", "alpha", 1e-3, 5.0, log=True),
+            "learning_rate":    self._suggest(trial, "suggest_float", "learning_rate", 1e-3, 0.3, log=True),
+            "max_depth":        self._suggest(trial, "suggest_int",   "max_depth", 2, max_depth_upper),
+            "min_child_weight": self._suggest(trial, "suggest_int",   "min_child_weight", 2, mcw_upper),
+            "gamma":            self._suggest(trial, "suggest_float", "gamma", 1e-3, 1.0, log=True),
+            "subsample":        self._suggest(trial, "suggest_float", "subsample", 0.5, 0.9),
+            "colsample_bytree": self._suggest(trial, "suggest_float", "colsample_bytree", 0.5, 0.9),
         }
 
         # Callback class that integrates the Optuna pruning system into the XGBoost-based training loop
@@ -165,7 +209,7 @@ class XGBOptClf(BaseEstimator, ClassifierMixin):
             params,
             dtrain,
             num_boost_round=1000,
-            early_stopping_rounds=100,
+            early_stopping_rounds=early_stopping_rounds, # addaptive early stopping based on dataset size
             nfold=self.nfold,
             seed=self.random_state,
             callbacks=[pruning_callback],
@@ -174,9 +218,9 @@ class XGBOptClf(BaseEstimator, ClassifierMixin):
 
         # Set n_estimators as a trial attribute; len(cv_results) — this identifies the best iteration in terms of its performance (unlike catboost)
         trial.set_user_attr("n_estimators", len(cv_results))
-        
-        mean_auc = cv_results[f"test-{self.eval_metric}-mean"].iloc[-1] # type: ignore
-        std_auc = cv_results[f"test-{self.eval_metric}-std"].iloc[-1] # type: ignore
+
+        mean_auc = cv_results[f"test-{self.eval_metric}-mean"].iloc[-1] # type: ignore - otherwise Visual Studio Code cries
+        std_auc = cv_results[f"test-{self.eval_metric}-std"].iloc[-1] # type: ignore - otherwise Visual Studio Code cries
 
         trial.set_user_attr(f"test_{self.eval_metric}_mean", mean_auc)
         trial.set_user_attr(f"test_{self.eval_metric}_std", std_auc)
@@ -236,18 +280,19 @@ class XGBOptClf(BaseEstimator, ClassifierMixin):
         self.final_params_ = {
             **self._base_params(),
             **self.best_params_,
-            }
-    
-        self.best_model_ = xgb.train(self.final_params_, 
-                                    dtrain, 
+            **(self.frozen_params or {}),
+        }
+
+        self.best_model_ = xgb.train(self.final_params_,
+                                    dtrain,
                                     num_boost_round=self.best_num_boost_round_)
-        
+
         return self
-    
+
     # ------------------------
     # Prediction
     # ------------------------
-
+    
     def predict_proba(self, X):
         """Return predicted probabilities with shape (n_samples, 2).
 
@@ -272,17 +317,17 @@ class XGBOptClf(BaseEstimator, ClassifierMixin):
             Decision threshold applied to P(Y=1|X = x). Default 0.5.
         """
         self._check_is_fitted()
-        probs = self.predict_proba(X)[:, 1] # the second coordinate corresponds to Pr(Y_i = 1 | X = x)
+        probs = self.predict_proba(X)[:, 1] # the second coordinate corresponds to Pr(Y_i = 1 | X_i)
         return (probs >= threshold).astype(int)
 
     # ------------------------
     # Scoring
     # ------------------------
-    def score(self, X, y, sample_weights = None): # type: ignore
+    def score(self, X, y, sample_weight = None): # type: ignore
         """Return ROC-AUC score."""
         self._check_is_fitted()
         # Sampe weights; 1\sum_i wi \Sum 1(\hat{y_i} = y_i) \hat{w_i}
-        return roc_auc_score(y, self.predict_proba(X)[:, 1], sample_weight=sample_weights) # Sample weights; ()
+        return roc_auc_score(y, self.predict_proba(X)[:, 1], sample_weight=sample_weight) # Sample weight; ()
     # ------------------------
     # Evaluation
     # ------------------------
@@ -305,7 +350,7 @@ class XGBOptClf(BaseEstimator, ClassifierMixin):
         Returns
         -------
         dict with keys: dev_auc, test_auc, dev_mcc, test_mcc, matthews_corr_dev,
-                        applied_threshold, dev_report, test_report.
+                        applied_threshold, dev_report, test_report, roc_curves.
         """
         self._check_is_fitted()
 
@@ -341,6 +386,7 @@ class XGBOptClf(BaseEstimator, ClassifierMixin):
             "applied_threshold": final_threshold,
             "dev_report":        classification_report(y_dev,  dev_preds, output_dict=True),
             "test_report":       classification_report(y_test, test_preds, output_dict=True),
+            "roc_curve":         (roc_curve(y_test, test_probs), roc_auc_score(y_test, test_probs)),
         }
     # -------------------------------------------------------
     # Access Optuna Trials - Users can go over each trial
@@ -355,12 +401,16 @@ class XGBOptClf(BaseEstimator, ClassifierMixin):
     def plot_optuna_insights(self):
         """Return Optuna visualisation figures."""
         self._check_is_fitted()
-        self._check_is_fitted()
         fig1 = vis.plot_optimization_history(self.study_)
         fig2 = vis.plot_param_importances(self.study_)
         fig3 = vis.plot_slice(self.study_)
         fig4 = vis.plot_parallel_coordinate(self.study_)
         return fig1, fig2, fig3, fig4
+    
+    def param_importances(self):
+        """Return hyperparameter importances as an ordered dict."""
+        self._check_is_fitted()
+        return get_param_importances(self.study_, evaluator=FanovaImportanceEvaluator()) 
         
     def plot_calibration(self, X_test, y_test, n_bins=10, strategy="uniform"):
         """Plot calibration curve (reliability diagram).
@@ -371,10 +421,6 @@ class XGBOptClf(BaseEstimator, ClassifierMixin):
         X_test, y_test : test data and labels
         n_bins : int
             Number of bins for calibration curve. Default 10.
-        strategy : str
-            Strategy for binning — "uniform" or "quantile". Default "uniform".
-            - "uniform" : bins have equal width in [0, 1]
-            - "quantile" : bins have equal number of samples
         """
         self._check_is_fitted()
 

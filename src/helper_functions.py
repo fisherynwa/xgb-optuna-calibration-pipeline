@@ -102,7 +102,7 @@ def nested_cv_score(clf, X, y, n_outer=5, stratified=True, preprocessor=None, ta
             X_dev, X_test = preprocessor(X_dev, y_dev, X_test)
 
         fold_clf = XGBOptClf(**clf.get_params())
-        fold_clf.fit(X_dev, y_dev, )
+        fold_clf.fit(X_dev, y_dev)
 
         # eval() computes threshold on dev fold, applies to test fold
         results = fold_clf.eval(X_dev, y_dev, X_test, y_test, threshold=tau)

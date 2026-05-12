@@ -1,0 +1,12 @@
+services:
+  jupyter:
+    build: .
+    ports:
+      - "8888:8888"
+      - "5002:5002"
+    volumes:
+      - ./notebooks:/app/notebooks
+      - ./src:/app/src
+    environment:
+      - PYTHONPATH=/app
+    restart: unless-stopped

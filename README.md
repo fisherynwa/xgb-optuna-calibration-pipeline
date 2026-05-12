@@ -1,10 +1,16 @@
 # xgb-optuna-calibration-pipeline
 ![Tests](https://github.com/fisherynwa/xgb-optuna-calibration-pipeline/actions/workflows/tests.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Python](https://img.shields.io/badge/Python-3.12-blue.svg)
+![XGBoost](https://img.shields.io/badge/XGBoost-3.x-orange.svg)
+![Optuna](https://img.shields.io/badge/Optuna-4.x-blue.svg)
+![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)
+![Docker](https://img.shields.io/badge/Docker-ready-blue.svg)
+![MLflow](https://img.shields.io/badge/MLflow-tracking-blue.svg)
 
-A Python package providing an XGBoost classifier with built-in Optuna hyperparameter optimization, wrapped in a scikit-learn-compatible interface. Experiment tracking is integrated via MLflow. Some detailed pipeline walkthrough can be found in `notebooks/xgb_optuna_synthetic_data.ipynb`. 
+A Python package providing an XGBoost classifier with built-in Optuna hyperparameter optimization, wrapped in a scikit-learn-compatible interface. Experiment tracking is integrated via MLflow. A detailed pipeline walkthrough is available in `notebooks/xgb_optuna_synthetic_data.ipynb`, while a real-world data analysis (using the Pima dataset) can be found in `notebooks/pima_analysis.ipynb`.
 
-For implementation suggestions or bug reports, feel free to open an issue or contact me at vkvutov@gmail.com. Note that this package is under active development.
+For implementation suggestions or bug reports, feel free to open an issue or contact me at vkvutov@gmail.com. 
 
 ## Features
 - XGBoost classifier with automatic hyperparameter tuning via Optuna
@@ -15,9 +21,9 @@ For implementation suggestions or bug reports, feel free to open an issue or con
 - Decision threshold selection via Youden's J statistic, the Euclidean method, or a user-defined threshold (additional metrics will be implemented)
 - Probability calibration assessment via the Brier score
 - Experiment tracking with MLflow (parameters, metrics, artifacts, and Optuna plots)
+- (NEW) Freeze low-importance hyperparameters via `frozen_params` to reduce the hyperparameter space and improve optimization stability
 
 ## Installation
-
 
 ```bash
 uv sync
@@ -36,15 +42,25 @@ Then open `http://127.0.0.1:8888` in your browser.
 from src.xgb_opt_clf import XGBOptClf
 from src.helper_functions import nested_cv_score
 
+# Initialize
 clf = XGBOptClf(n_trials=20, nfold=5, std_penalty=0.5)
-clf.fit(X_dev, y_dev)                                        # optimize + train
-clf.predict(X_test, threshold=0.5)                           # binary predictions
-clf.predict_proba(X_test)                                    # probabilities (n_samples, 2)
-clf.score(X_test, y_test)                                    # ROC-AUC
-clf.eval(X_dev, y_dev, X_test, y_test, method="J_statistic") # full evaluation report
-clf.trials_dataframe()                                       # Optuna trials as DataFrame
-clf.plot_optuna_insights()                                   # optimization visualizations
-nested_cv_score(clf, X, y, n_outer=5)                        # unbiased generalization estimate
+
+# Core interface
+clf.fit(X_dev, y_dev)                                         # optimize + train
+clf.predict(X_test, threshold=0.5)                            # binary predictions
+clf.predict_proba(X_test)                                     # probabilities (n_samples, 2)
+clf.score(X_test, y_test)                                     # ROC-AUC
+
+# Evaluation
+clf.eval(X_dev, y_dev, X_test, y_test, method="J_statistic")  # full evaluation report
+
+# Inspection
+clf.trials_dataframe()                                        # Optuna trials as DataFrame
+clf.plot_optuna_insights()                                    # optimization visualizations
+clf.param_importances()                                       # fANOVA hyperparameter importances
+
+# Unbiased generalization estimate
+nested_cv_score(clf, X, y, n_outer=5)                         # nested CV score
 ```
 
 ## Parameters
@@ -56,9 +72,10 @@ nested_cv_score(clf, X, y, n_outer=5)                        # unbiased generali
 | `n_jobs` | `None` | Parallelism — auto-detects environment (1 in Docker, -1 locally). Override with any int |
 | `std_penalty` | 0.5 | Penalty weight on CV std |
 | `eval_metric` | `"auc"` | XGBoost eval metric (must be a gain metric) |
-| `use_multivariate` | `False` | Whether TPE models hyperparameter interactions |
+| `use_multivariate` | `False` | Whether TPE models hyperparameter interactions ()|
 | `is_stratified` | `True` | Whether inner CV folds are stratified |
 | `scale_pos_weight` | `None` | Positive class weight — `None`, `"auto"`, or a float |
+| `frozen_params` | `{}` | Hyperparameters fixed at specified values and removed from the Optuna search space. Useful when parameter importance analysis identifies low-impact parameters that do not need tuning |
 
 ## Experiment Tracking
 Runs are tracked with MLflow. To view the UI:
