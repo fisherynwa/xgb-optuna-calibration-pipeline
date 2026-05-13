@@ -6,7 +6,6 @@
 ![Optuna](https://img.shields.io/badge/Optuna-4.x-blue.svg)
 ![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)
 
-# xgb-optuna-calibration-pipeline: XGBoost Framework
 The xgb-opt framework automates model tuning and validation
 and provides a `Scikit-learn`-like interface that handles nested evaluation and decision threshold optimization for **binary classification tasks**.
 
