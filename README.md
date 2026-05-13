@@ -5,24 +5,30 @@
 ![XGBoost](https://img.shields.io/badge/XGBoost-3.x-orange.svg)
 ![Optuna](https://img.shields.io/badge/Optuna-4.x-blue.svg)
 ![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)
-![MLflow](https://img.shields.io/badge/MLflow-tracking-blue.svg)
 
-A Python package providing an XGBoost classifier with built-in Optuna hyperparameter optimization, wrapped in a scikit-learn-compatible interface. Experiment tracking is integrated via MLflow. A detailed pipeline walkthrough is available in `notebooks/xgb_optuna_synthetic_data.ipynb`, while a real-world data analysis (using the Pima dataset) can be found in `notebooks/pima_analysis.ipynb`.
+# xgb-optuna-calibration-pipeline: XGBoost Framework
+The xgb-opt framework automates model tuning and validation
+and provides a `Scikit-learn`-like interface that handles nested evaluation and decision threshold optimization for **binary classification tasks**.
+
+## 📚 Documentation & Examples
+A detailed pipeline walkthrough is available in `notebooks/xgb_optuna_synthetic_data.ipynb`.
+
+A real-world data analysis (using the Pima dataset) can be found in `notebooks/pima_analysis.ipynb`.
 
 For implementation suggestions or bug reports, feel free to open an issue or contact me at vkvutov@gmail.com. 
 
-## Features
-- XGBoost classifier with automatic hyperparameter tuning via Optuna
+## 🚀 Features
+- XGBoost classifier with automated hyperparameter tuning via Optuna (the TPE sampler)
 - Scikit-learn compatible API (`fit`, `predict`, `predict_proba`, `score`, `eval`)
 - Penalized objective that rewards both high AUC and stability across folds
 - Auto-detects environment -- utilizes all `n-1` cores locally, a single core in Docker
 - Generalization estimates via nested cross-validation to prevent (from some) optimization bias
-- Decision threshold selection via Youden's J statistic, the Euclidean method, or a user-defined threshold (additional metrics will be implemented)
-- Probability calibration assessment via the Brier score
+- Decision threshold selection by means of Youden's J statistic, the Euclidean method, or a user-defined threshold
+- Probability calibration assessment using the Brier score
 - Experiment tracking with MLflow (parameters, metrics, artifacts, and Optuna plots)
 - (NEW) Freeze low-importance hyperparameters via `frozen_params` to reduce the hyperparameter space and improve optimization stability
 
-## Installation
+## 📦 Installation
 
 ```bash
 uv sync
@@ -33,9 +39,9 @@ uv run jupyter lab
 ```bash
 docker-compose up --build
 ```
-Then open *Jupyter*:`http://127.0.0.1:8888` in your browser.
+Then open :`http://127.0.0.1:8888` in your browser.
 
-## Usage
+## 🛠 Usage
 ```python
 from src.xgb_opt_clf import XGBOptClf
 from src.helper_functions import nested_cv_score
@@ -61,7 +67,7 @@ clf.param_importances()                                       # fANOVA hyperpara
 nested_cv_score(clf, X, y, n_outer=5)                         # nested CV score
 ```
 
-## Parameters
+## ⚙️ Parameters
 | Parameter | Default | Description |
 |---|---|---|
 | `n_trials` | 20 | Number of Optuna trials |
@@ -76,7 +82,7 @@ nested_cv_score(clf, X, y, n_outer=5)                         # nested CV score
 | `frozen_params` | `{}` | Hyperparameters fixed at specified values and removed from the Optuna search space. Useful when parameter importance analysis identifies low-impact parameters 
 that might not need tuning |
 
-## Experiment Tracking
+## 🛠 Experiment Tracking
 Runs are tracked with MLflow. To view the UI:
 ```bash
 cd notebooks
@@ -85,14 +91,13 @@ mlflow ui --port 5002
 Then open `http://127.0.0.1:5002` in your browser. Each run logs:
 - Hyperparameters and number of estimators
 - Validation AUC, CV AUC (mean/std), dev/test AUC, dev/test MCC, and applied threshold
-- Nested CV AUC, Matthews Correlation Coefficients (MCCs) (mean/std), and Brier Scores per fold
-- Thresholds, Matthews Correlation Coefficients (MCCs), and Brier scores across folds (CSV)
+- All nested CV metrics 
 - ROC curve and applied threshold
 - Optuna visualizations (optimization history, parameter importances, slice, parallel coordinate)
 - Trained XGBoost model (and its interface)
 
 ## Tests
-The package includes 30+ unit tests covering interface, predictions, evaluation, fitting, and reproducibility.
+The package includes 30+ unit tests covering interface, predictions, evaluation, fitting, frozen_params, and reproducibility.
 
 ```bash
 uv run pytest tests/ -v
