@@ -5,7 +5,6 @@
 ![XGBoost](https://img.shields.io/badge/XGBoost-3.x-orange.svg)
 ![Optuna](https://img.shields.io/badge/Optuna-4.x-blue.svg)
 ![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)
-![Docker](https://img.shields.io/badge/Docker-ready-blue.svg)
 ![MLflow](https://img.shields.io/badge/MLflow-tracking-blue.svg)
 
 A Python package providing an XGBoost classifier with built-in Optuna hyperparameter optimization, wrapped in a scikit-learn-compatible interface. Experiment tracking is integrated via MLflow. A detailed pipeline walkthrough is available in `notebooks/xgb_optuna_synthetic_data.ipynb`, while a real-world data analysis (using the Pima dataset) can be found in `notebooks/pima_analysis.ipynb`.
@@ -32,10 +31,9 @@ uv run jupyter lab
 
 **With Docker:**
 ```bash
-docker build -t xgb-optuna .
-docker run -p 8888:8888 -p 5002:5002 xgb-optuna
+docker-compose up --build
 ```
-Then open `http://127.0.0.1:8888` in your browser.
+Then open *Jupyter*:`http://127.0.0.1:8888` in your browser.
 
 ## Usage
 ```python
@@ -72,10 +70,11 @@ nested_cv_score(clf, X, y, n_outer=5)                         # nested CV score
 | `n_jobs` | `None` | Parallelism — auto-detects environment (1 in Docker, -1 locally). Override with any int |
 | `std_penalty` | 0.5 | Penalty weight on CV std |
 | `eval_metric` | `"auc"` | XGBoost eval metric (must be a gain metric) |
-| `use_multivariate` | `False` | Whether TPE models hyperparameter interactions ()|
+| `use_multivariate` | `False` | Whether TPE models hyperparameter interactions (worth using, i.e. `True`)|
 | `is_stratified` | `True` | Whether inner CV folds are stratified |
 | `scale_pos_weight` | `None` | Positive class weight — `None`, `"auto"`, or a float |
-| `frozen_params` | `{}` | Hyperparameters fixed at specified values and removed from the Optuna search space. Useful when parameter importance analysis identifies low-impact parameters that do not need tuning |
+| `frozen_params` | `{}` | Hyperparameters fixed at specified values and removed from the Optuna search space. Useful when parameter importance analysis identifies low-impact parameters 
+that might not need tuning |
 
 ## Experiment Tracking
 Runs are tracked with MLflow. To view the UI:
