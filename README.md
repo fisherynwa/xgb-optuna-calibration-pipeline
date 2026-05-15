@@ -25,6 +25,7 @@ For implementation suggestions or bug reports, feel free to open an issue or con
 - Generalization estimates via nested cross-validation to prevent (from some) optimization bias
 - Decision threshold selection by means of Youden's J statistic, the Euclidean method, or a user-defined threshold
 - Probability calibration assessment using the Brier score
+- Estimation of the Matthews Correlation Coefficient (MCC) 
 - Experiment tracking with MLflow (parameters, metrics, artifacts, and Optuna plots)
 - (NEW) Freeze low-importance hyperparameters via `frozen_params` to reduce the hyperparameter space and improve optimization stability
 
@@ -56,7 +57,7 @@ clf.predict_proba(X_test)                                     # probabilities (n
 clf.score(X_test, y_test)                                     # ROC-AUC
 
 # Evaluation
-clf.eval(X_dev, y_dev, X_test, y_test, method="J_statistic")  # full evaluation report
+clf.eval(X_dev, y_dev, X_test, y_test, method="J_statistic")  # full evaluation report 
 
 # Inspection
 clf.trials_dataframe()                                        # Optuna trials as DataFrame
