@@ -10,6 +10,7 @@ The xgb-opt framework automates model tuning and validation
 and provides a `Scikit-learn`-like interface that handles nested evaluation and decision threshold optimization for **binary classification tasks**.
 
 ## 📚 Documentation & Examples
+
 A detailed pipeline walkthrough is available in `notebooks/xgb_optuna_synthetic_data.ipynb`.
 
 A real-world data analysis (using the Pima dataset) can be found in `notebooks/pima_analysis.ipynb`.
@@ -78,8 +79,7 @@ nested_cv_score(clf, X, y, n_outer=5)                         # nested CV score
 | `use_multivariate` | `False` | Whether TPE models hyperparameter interactions (worth using, i.e. `True`)|
 | `is_stratified` | `True` | Whether inner CV folds are stratified |
 | `scale_pos_weight` | `None` | Positive class weight — `None`, `"auto"`, or a float |
-| `frozen_params` | `{}` | Hyperparameters fixed at specified values and removed from the Optuna search space. Useful when parameter importance analysis identifies low-impact parameters 
-that might not need tuning |
+| `frozen_params` | `{}` | Hyperparameters fixed at specified values and removed from the Optuna search space. Useful when parameter importance analysis identifies low-impact parameters |
 
 ## 🛠 Experiment Tracking
 Runs are tracked with MLflow. To view the UI:
@@ -88,10 +88,10 @@ cd notebooks
 mlflow ui --port 5002
 ```
 Then open `http://127.0.0.1:5002` in your browser. Each run logs:
-- Hyperparameters and number of estimators
+- Hyperparameters and the number of estimators (i.e. trees)
 - Validation AUC, CV AUC (mean/std), dev/test AUC, dev/test MCC, and applied threshold
 - All nested CV metrics 
-- ROC curve and applied threshold
+- The ROC curve and its applied threshold
 - Optuna visualizations (optimization history, parameter importances, slice, parallel coordinate)
 - Trained XGBoost model (and its interface)
 
